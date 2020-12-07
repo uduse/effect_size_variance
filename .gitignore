@@ -1,4 +1,6 @@
 *venv/
+log/
+spinningup/
 .DS_Store
 
 __pycache__/
