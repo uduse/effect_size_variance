@@ -1,10 +1,13 @@
 import seaborn as sns
 import pandas as pd
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import json
 import os
 import os.path as osp
 import numpy as np
+
+mpl.use("TKAgg")
 
 DIV_LINE_WIDTH = 50
 

@@ -109,10 +109,14 @@ class MLPActorCritic(nn.Module):
 
 
     def __init__(self, observation_space, action_space, 
-                 hidden_sizes=(64,64), activation=nn.Tanh):
+                 hidden_sizes=(64,64), activation=nn.Tanh,
+                 seed_weight_init=None):
         super().__init__()
 
         obs_dim = observation_space.shape[0]
+
+        if seed_weight_init is not None:
+            torch.manual_seed(seed_weight_init)
 
         # policy builder depends on action space
         if isinstance(action_space, Box):
