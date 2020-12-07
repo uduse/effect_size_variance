@@ -185,12 +185,13 @@ seed_weight_init=None,
     logger.save_config(locals())
 
     # Random seed
-    seed += 10000 * proc_id()
+    # seed += 10000 * proc_id()
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # Instantiate environment
     env = env_fn()
+    env.seed(seed)
     obs_dim = env.observation_space.shape
     act_dim = env.action_space.shape
 
