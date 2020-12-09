@@ -16,7 +16,7 @@ mpl.use("TKAgg")
 
 def main(
     seed=0,
-    seed_weights_init=0,
+    seed_weight_init=0,
     exp_name="dqn",
     num_steps=5000,
     checkpoint=1000,
@@ -46,7 +46,7 @@ def main(
     agent = DQN(
         o_dim, a_dim,
         seed,
-        seed_weights_init,
+        seed_weight_init,
         batch_size=batch_size,
         gamma=gamma,
         tau=tau,
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument('--env', type=str, default='LunarLander-v2')
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--seed', '-s', type=int, default=0)
-    parser.add_argument('--seed_weights_init', '-swi', type=int, default=0)
+    parser.add_argument('--seed_weight_init', '-swi', type=int, default=0)
     parser.add_argument('--num_steps', type=int, default=500000)
     parser.add_argument('--checkpoint', type=int, default=10000)
     parser.add_argument('--T', type=int, default=1)
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     main(
         seed=args.seed,
-        seed_weights_init=args.seed_weights_init,
+        seed_weight_init=args.seed_weight_init,
         exp_name=args.exp_name,
         num_steps=args.num_steps,
         checkpoint=args.checkpoint,

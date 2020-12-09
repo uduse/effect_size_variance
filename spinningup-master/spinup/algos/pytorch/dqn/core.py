@@ -88,7 +88,7 @@ class QNetwork(nn.Module):
 class DQN():
     def __init__(self, state_size, action_size,
                  seed,
-                 seed_weights_init,
+                 seed_weight_init,
                  buffer_size=int(1e5),
                  batch_size=64,
                  gamma=0.99,
@@ -107,7 +107,7 @@ class DQN():
         self.state_size = state_size
         self.action_size = action_size
         self.seed = random.seed(seed)
-        self.seed_weights_init = torch.random.manual_seed(seed_weights_init)
+        self.seed_weight_init = torch.random.manual_seed(seed_weight_init)
         self.batch_size = batch_size
         self.gamma = gamma
         self.tau = tau
@@ -115,9 +115,9 @@ class DQN():
         self.hidden_sizes = hidden_sizes
 
         # Q-Network
-        self.qnetwork_local = QNetwork(state_size, action_size, seed_weights_init, hidden_sizes).to(
+        self.qnetwork_local = QNetwork(state_size, action_size, seed_weight_init, hidden_sizes).to(
             device)
-        self.qnetwork_target = QNetwork(state_size, action_size, seed_weights_init, hidden_sizes).to(
+        self.qnetwork_target = QNetwork(state_size, action_size, seed_weight_init, hidden_sizes).to(
             device)
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=lr)
 
