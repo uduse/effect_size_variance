@@ -1,165 +1,139 @@
-#!/usr/bin/env python3
-
-import os
-
+import time
 import gym
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from tqdm import tqdm
-
+from spinup.utils.logx import EpochLogger
 from spinup.algos.pytorch.dqn.core import DQN
 
-mpl.use("TKAgg")
 
-
-def main(
+def dqn(
+    env_fn,
+    ac_kwargs=dict(),
     seed=0,
-    seed_weight_init=0,
-    exp_name="dqn",
-    num_steps=5000,
-    checkpoint=1000,
-    T=1,
-    batch_size=64,
+    seed_weight_init=None,
+    steps_per_epoch=4000, epochs=100,
+    replay_size=1000000, gamma=0.99,
+    q_lr=5e-4, batch_size=64,
+    update_after=100, update_every=1,
+    max_ep_len=1000,
     tau=1e-3,
-    lr=5e-4,
-    gamma=0.99,
-    max_t=1000,
     eps_start=1.0,
     eps_end=0.01,
     eps_decay=0.995,
-    C=int(1e5),
-    to_log=False,
-    to_plot=False,
-    device="cpu",
-    hidden_sizes=[64, 64]
-):
+    logger_kwargs=dict(), save_freq=1):
 
-    env = gym.make("LunarLander-v2")
-    env.seed(seed)
-    o_dim = env.observation_space.shape[0]
-    a_dim = env.action_space.n
 
-    # Learner setup block
+    logger = EpochLogger(**logger_kwargs)
+    logger.save_config(locals())
+
+    # Random seed
     torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    # Instantiate environment
+    env = env_fn()
+    env.seed(seed)
+    obs_dim = env.observation_space.shape[0]
+    act_dim = env.action_space.shape
+    if all(act_dim):
+        act_dim = env.action_space.n
+
+    hidden_sizes = ac_kwargs["hidden_sizes"]
     agent = DQN(
-        o_dim, a_dim,
+        obs_dim, act_dim,
         seed,
         seed_weight_init,
+        buffer_size=replay_size,
         batch_size=batch_size,
         gamma=gamma,
         tau=tau,
-        lr=lr,
-        buffer_size=C,
-        device=device,
+        lr=q_lr,
         hidden_sizes=hidden_sizes)
 
-    # Experiment block starts
-    ret = 0
-    rets = []
-    avgrets = []
-    o = env.reset()
+
+    # Prepare for interaction with environment
+    total_steps = steps_per_epoch * epochs
+    start_time = time.time()
+    o, ep_ret, ep_len = env.reset(), 0, 0
 
     eps = eps_start
-    for steps in tqdm(range(num_steps)):
+    for t in range(total_steps):
 
         # Select an action
         a = agent.act(o, eps=eps)
 
         # Observe
-        op, r, done, _ = env.step(a.item())
+        op, r, d, _ = env.step(a.item())
+        ep_ret += r
+        ep_len += 1
+
+        # Ignore the "done" signal if it comes from hitting the time
+        # horizon (that is, when it's an artificial terminal signal
+        # that isn't based on the agent's state)
+        d = False if ep_len == max_ep_len else d
 
         # Learn
-        agent.memory.add(o, a, r, op, done)
-
-        # Time to learn
-        if (steps + 1) % T == 0:
-            if len(agent.memory) > batch_size:
-                experiences = agent.memory.sample()
-                agent.learn(experiences)
-
-        if (steps + 1) % max_t == 0:
-            eps = max(eps_end, eps_decay*eps)
+        agent.memory.add(o, a, r, op, d)
 
         o = op
 
-        # Log
-        ret += r
-        if done:
-            rets.append(ret)
-            ret = 0
-            o = env.reset()
+        # End of trajectory handling
+        if d or (ep_len == max_ep_len):
+            logger.store(EpRet=ep_ret, EpLen=ep_len)
+            o, ep_ret, ep_len = env.reset(), 0, 0
 
-        if (steps + 1) % checkpoint == 0:
-            avgrets.append(np.mean(rets))
+        # Time to learn
+        if (t + 1) % update_every == 0:
+            if len(agent.memory) > update_after:
+                experiences = agent.memory.sample()
+                agent.learn(experiences)
 
-            if to_log:
-                print(f"{avgrets[-1]:.5f}")
-            rets = []
+        if (t + 1) % max_ep_len == 0:
+            eps = max(eps_end, eps_decay*eps)
 
-            if to_plot:
-                plt.clf()
-                plt.plot(range(checkpoint, (steps + 1) + checkpoint, checkpoint), avgrets)
-                plt.pause(0.001)
+        # End of epoch handling
+        if (t + 1) % steps_per_epoch == 0:
+            epoch = (t + 1) // steps_per_epoch
 
-    data = np.zeros((2, len(avgrets)))
-    data[0] = range(checkpoint, num_steps + 1, checkpoint)
-    data[1] = avgrets
-    data_dir = os.path.join("data", exp_name)
-    os.makedirs(data_dir, exist_ok=True)
-    np.savetxt(os.path.join(data_dir, str(seed) + ".txt"), data)
+            # Save model
+            if (epoch % save_freq == 0) or (epoch == epochs):
+                logger.save_state({'env': env}, None)
 
-    if to_plot:
-        plt.show()
-
+            # Log info about epoch
+            logger.log_tabular('Epoch', epoch)
+            logger.log_tabular('EpRet', with_min_and_max=True)
+            logger.log_tabular('EpLen', average_only=True)
+            logger.log_tabular('TotalEnvInteracts', (epoch+1)*steps_per_epoch)
+            logger.log_tabular('Time', time.time() - start_time)
+            logger.dump_tabular()
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
+
     parser.add_argument('--env', type=str, default='LunarLander-v2')
+    parser.add_argument('--hid', type=int, default=64)
+    parser.add_argument('--l', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--seed_weight_init', '-swi', type=int, default=0)
-    parser.add_argument('--num_steps', type=int, default=500000)
-    parser.add_argument('--checkpoint', type=int, default=10000)
-    parser.add_argument('--T', type=int, default=1)
-    parser.add_argument('--batch_size', type=int, default=64)
-    parser.add_argument('--tau', type=float, default=1e-3)
-    parser.add_argument('--lr', type=float, default=5e-4)
-    parser.add_argument('--max_t', type=float, default=1000)
-    parser.add_argument('--eps_start', type=float, default=1.0)
-    parser.add_argument('--eps_end', type=float, default=0.01)
-    parser.add_argument('--eps_decay', type=float, default=0.995)
-    parser.add_argument('--C', type=int, default=int(1e5))
-    parser.add_argument('--to_log', type=bool, default=False)
-    parser.add_argument('--to_plot', type=bool, default=False)
-    parser.add_argument('--device', type=str, default="cpu")
-    parser.add_argument('--exp_name', type=str, default="dqn")
-    parser.add_argument('--hidden_sizes', nargs="+", default=[64, 64])
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--exp_name', type=str, default='dqn')
     args = parser.parse_args()
 
-    main(
-        seed=args.seed,
+    from spinup.utils.run_utils import setup_logger_kwargs
+
+    logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
+
+    dqn(
+        lambda: gym.make(args.env),
+        ac_kwargs=dict(hidden_sizes=[args.hid]*args.l),
+        gamma=args.gamma, seed=args.seed,
         seed_weight_init=args.seed_weight_init,
-        exp_name=args.exp_name,
-        num_steps=args.num_steps,
-        checkpoint=args.checkpoint,
-        T=args.T,
-        batch_size=args.batch_size,
-        tau=args.tau,
-        lr=args.lr,
-        gamma=args.gamma,
-        max_t=args.max_t,
-        eps_start=args.eps_start,
-        eps_end=args.eps_end,
-        eps_decay=args.eps_decay,
-        C=args.C,
-        to_log=args.to_log,
-        to_plot=args.to_plot,
-        device=args.device,
-        hidden_sizes=args.hidden_sizes
+        epochs=args.epochs,
+        logger_kwargs=logger_kwargs
     )
 
 

@@ -8,11 +8,13 @@ from collections import namedtuple, deque
 import numpy as np
 import torch
 
+device = "cpu"
+
 
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
 
-    def __init__(self, action_size, buffer_size, batch_size, seed, device):
+    def __init__(self, action_size, buffer_size, batch_size, seed):
         """Initialize a ReplayBuffer object.
 
         Params
@@ -27,7 +29,6 @@ class ReplayBuffer:
         self.batch_size = batch_size
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
         self.seed = random.seed(seed)
-        self.device = device
 
     def add(self, state, action, reward, next_state, done):
         """Add a new experience to memory."""
@@ -38,12 +39,11 @@ class ReplayBuffer:
         """Randomly sample a batch of experiences from memory."""
         experiences = random.sample(self.memory, k=self.batch_size)
 
-        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(self.device)
-        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(self.device)
-        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(self.device)
-        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(self.device)
-        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(
-            self.device)
+        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
+        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(device)
+        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
+        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
+        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
 
         return (states, actions, rewards, next_states, dones)
 
@@ -56,7 +56,7 @@ class ReplayBuffer:
 class QNetwork(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed_weights_init, hidden_sizes=[64, 64]):
+    def __init__(self, state_size, action_size, seed_weights_init=None, hidden_sizes=(64, 64)):
         """Initialize parameters and build model.
         Params
         ======
@@ -65,14 +65,15 @@ class QNetwork(nn.Module):
             seed (int): Random seed
         """
         super(QNetwork, self).__init__()
-        self.seed_weights_init = torch.manual_seed(seed_weights_init)
+        if seed_weights_init is not None:
+            self.seed_weights_init = torch.manual_seed(seed_weights_init)
         self.state_size = state_size
         self.action_size = action_size
         self.hidden_sizes = hidden_sizes
 
-        self.fc1 = nn.Linear(self.state_size, hidden_sizes[0])
-        self.fc2 = nn.Linear(hidden_sizes[0], hidden_sizes[1])
-        self.fc3 = nn.Linear(hidden_sizes[1], action_size)
+        self.fc1 = nn.Linear(self.state_size, self.hidden_sizes[0])
+        self.fc2 = nn.Linear(self.hidden_sizes[0], self.hidden_sizes[1])
+        self.fc3 = nn.Linear(self.hidden_sizes[1], action_size)
 
     def forward(self, state):
         """Build a network that maps state -> action values."""
@@ -94,8 +95,7 @@ class DQN():
                  gamma=0.99,
                  tau=1e-3,
                  lr=5e-4,
-                 hidden_sizes=[64, 64],
-                 device="cpu"):
+                 hidden_sizes=(64, 64)):
         """Initialize an Agent object.
 
         Params
@@ -107,22 +107,22 @@ class DQN():
         self.state_size = state_size
         self.action_size = action_size
         self.seed = random.seed(seed)
-        self.seed_weight_init = torch.random.manual_seed(seed_weight_init)
         self.batch_size = batch_size
         self.gamma = gamma
         self.tau = tau
-        self.device = device
         self.hidden_sizes = hidden_sizes
 
         # Q-Network
-        self.qnetwork_local = QNetwork(state_size, action_size, seed_weight_init, hidden_sizes).to(
+        self.qnetwork_local = QNetwork(state_size=state_size, action_size=action_size,
+                                       seed_weights_init=seed_weight_init, hidden_sizes=hidden_sizes).to(
             device)
-        self.qnetwork_target = QNetwork(state_size, action_size, seed_weight_init, hidden_sizes).to(
+        self.qnetwork_target = QNetwork(state_size=state_size, action_size=action_size,
+                                       seed_weights_init=seed_weight_init, hidden_sizes=hidden_sizes).to(
             device)
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=lr)
 
         # Replay memory
-        self.memory = ReplayBuffer(action_size, buffer_size, batch_size, seed, device)
+        self.memory = ReplayBuffer(action_size, buffer_size, batch_size, seed)
 
     def act(self, state, eps=0.01):
         """Returns actions for given state as per current policy.
@@ -132,7 +132,7 @@ class DQN():
             state (array_like): current state
             eps (float): epsilon, for epsilon-greedy action selection
         """
-        state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
+        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         self.qnetwork_local.eval()
         with torch.no_grad():
             action_values = self.qnetwork_local(state)
