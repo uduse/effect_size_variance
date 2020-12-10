@@ -2,7 +2,7 @@ import time
 import gym
 import numpy as np
 import torch
-from tqdm import tqdm
+from gym.spaces import Box, Discrete
 from spinup.utils.logx import EpochLogger
 from spinup.algos.pytorch.dqn.core import DQN
 
@@ -35,8 +35,10 @@ def dqn(
     env = env_fn()
     env.seed(seed)
     obs_dim = env.observation_space.shape[0]
-    act_dim = env.action_space.shape
-    if all(act_dim):
+
+    if isinstance(env.action_space, Box):
+        act_dim = env.action_space.shape[0]
+    elif isinstance(env.action_space, Discrete):
         act_dim = env.action_space.n
 
     hidden_sizes = ac_kwargs["hidden_sizes"]
