@@ -1,9 +1,13 @@
 #!/bin/bash
-#SBATCH --time=7
+#SBATCH --time=10
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=1G
 #SBATCH --cpus-per-task=1
+<<<<<<< Updated upstream
 #SBATCH --array=1-8
+=======
+#SBATCH --array=1-4
+>>>>>>> Stashed changes
 #SBATCH --output=tmp-%A_%a.out
 ##SBATCH --output=/dev/null
 
@@ -29,8 +33,11 @@ fi
 
 EPOCHS=10
 STEPS_PER_EPOCH=4000
-
 ENV_SEED=$((${SLURM_ARRAY_JOB_ID} + ${SLURM_ARRAY_TASK_ID}))
-python script.py --epochs $EPOCHS --steps_per_epoch $STEPS_PER_EPOCH --algo vpg --seed $ENV_SEED  --seed_weight_init $SLURM_ARRAY_TASK_ID > log/$DIR_NAME/${SLURM_ARRAY_TASK_ID}_vpg.out
-python script.py --epochs $EPOCHS --steps_per_epoch $STEPS_PER_EPOCH --algo ppo --seed $ENV_SEED  --seed_weight_init $SLURM_ARRAY_TASK_ID > log/$DIR_NAME/${SLURM_ARRAY_TASK_ID}_ppo_c.out
-python script.py --epochs $EPOCHS --steps_per_epoch $STEPS_PER_EPOCH --algo ppo --seed $ENV_SEED  --seed_weight_init $((${SLURM_ARRAY_TASK_ID} + 1000)) > log/$DIR_NAME/${SLURM_ARRAY_TASK_ID}_ppo_uc.out
+
+python script.py --epochs $EPOCHS --steps_per_epoch $STEPS_PER_EPOCH --algo vpg --seed $END_SEED  \ 
+				--seed_weight_init $SLURM_ARRAY_TASK_ID --output_dir log/$DIR_NAME --output_fname ${SLURM_ARRAY_TASK_ID}_vpg.out  
+python script.py --epochs $EPOCHS --steps_per_epoch $STEPS_PER_EPOCH --algo ppo --seed $END_SEED  \
+				--seed_weight_init $SLURM_ARRAY_TASK_ID --output_dir log/$DIR_NAME --output_fname ${SLURM_ARRAY_TASK_ID}_ppo_c.out
+python script.py --epochs $EPOCHS --steps_per_epoch $STEPS_PER_EPOCH --algo ppo --seed $END_SEED  \
+				--seed_weight_init $((${SLURM_ARRAY_TASK_ID} + 1000)) --output_dir log/$DIR_NAME --output_fname ${SLURM_ARRAY_TASK_ID}_ppo_uc.out
