@@ -14,7 +14,7 @@ def dqn(
     seed_weight_init=None,
     steps_per_epoch=4000, epochs=100,
     replay_size=1000000, gamma=0.99,
-    q_lr=5e-4, batch_size=64,
+    q_lr=5e-4, batch_size=100,
     update_after=100, update_every=1,
     max_ep_len=1000,
     tau=1e-3,
