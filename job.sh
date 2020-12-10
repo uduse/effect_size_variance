@@ -3,11 +3,7 @@
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=1G
 #SBATCH --cpus-per-task=1
-<<<<<<< Updated upstream
-#SBATCH --array=1-8
-=======
 #SBATCH --array=1-4
->>>>>>> Stashed changes
 #SBATCH --output=tmp-%A_%a.out
 ##SBATCH --output=/dev/null
 
