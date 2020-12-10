@@ -23,7 +23,6 @@ def dqn(
     eps_decay=0.995,
     logger_kwargs=dict(), save_freq=1):
 
-
     logger = EpochLogger(**logger_kwargs)
     logger.save_config(locals())
 
@@ -87,6 +86,7 @@ def dqn(
 
         # Time to learn
         if (t + 1) % update_every == 0:
+            # Ensure that buffer has enough samples for a meaningful update.
             if len(agent.memory) > update_after:
                 experiences = agent.memory.sample()
                 agent.learn(experiences)
@@ -109,6 +109,7 @@ def dqn(
             logger.log_tabular('TotalEnvInteracts', (epoch+1)*steps_per_epoch)
             logger.log_tabular('Time', time.time() - start_time)
             logger.dump_tabular()
+
 
 if __name__ == "__main__":
     import argparse
