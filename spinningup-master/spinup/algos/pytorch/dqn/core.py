@@ -28,7 +28,7 @@ class ReplayBuffer:
         self.memory = deque(maxlen=buffer_size)
         self.batch_size = batch_size
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
-        self.seed = random.seed(seed)
+        self.rand_generator = random.Random(seed)
 
     def add(self, state, action, reward, next_state, done):
         """Add a new experience to memory."""
@@ -37,7 +37,7 @@ class ReplayBuffer:
 
     def sample(self):
         """Randomly sample a batch of experiences from memory."""
-        experiences = random.sample(self.memory, k=self.batch_size)
+        experiences = self.rand_generator.sample(self.memory, k=self.batch_size)
 
         states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
         actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(device)
@@ -106,7 +106,7 @@ class DQN():
         """
         self.state_size = state_size
         self.action_size = action_size
-        self.seed = random.seed(seed)
+        self.rand_generator = random.Random(seed)
         self.batch_size = batch_size
         self.gamma = gamma
         self.tau = tau
@@ -140,10 +140,10 @@ class DQN():
         self.qnetwork_local.train()
 
         # Epsilon-greedy action selection
-        if random.random() > eps:
+        if self.rand_generator.random() > eps:
             return np.argmax(action_values.cpu().data.numpy())
         else:
-            return random.choice(np.arange(self.action_size))
+            return self.rand_generator.choice(np.arange(self.action_size))
 
     def learn(self, experiences):
         """Update value parameters using given batch of experience tuples.
