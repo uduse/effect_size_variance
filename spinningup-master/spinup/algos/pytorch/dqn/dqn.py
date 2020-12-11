@@ -10,6 +10,7 @@ from spinup.algos.pytorch.dqn.core import DQN
 def dqn(
     env_fn,
     ac_kwargs=dict(),
+    hidden_sizes=(64,64),
     seed=0,
     seed_weight_init=None,
     steps_per_epoch=4000, epochs=100,
@@ -40,7 +41,6 @@ def dqn(
     elif isinstance(env.action_space, Discrete):
         act_dim = env.action_space.n
 
-    hidden_sizes = ac_kwargs["hidden_sizes"]
     agent = DQN(
         obs_dim, act_dim,
         seed,
@@ -127,12 +127,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     from spinup.utils.run_utils import setup_logger_kwargs
-
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
 
     dqn(
         lambda: gym.make(args.env),
-        ac_kwargs=dict(hidden_sizes=[args.hid]*args.l),
+        ac_kwargs=dict(),
+        hidden_sizes=[args.hid] * args.l,
         gamma=args.gamma, seed=args.seed,
         seed_weight_init=args.seed_weight_init,
         epochs=args.epochs,
