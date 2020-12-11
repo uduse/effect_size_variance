@@ -212,7 +212,7 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
     # Create actor-critic module
     ac_kwargs["seed_weight_init"] = seed_weight_init
-    ac = actor_critic(env.observation_space, env.action_space, **ac_kwargs)
+    ac = actor_critic(seed, env.observation_space, env.action_space, **ac_kwargs)
 
     # Sync params across processes
     sync_params(ac)

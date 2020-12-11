@@ -14,7 +14,9 @@ def combined_shape(length, shape=None):
     return (length, shape) if np.isscalar(shape) else (length, *shape)
 
 
-def mlp(sizes, activation, output_activation=nn.Identity):
+def mlp(sizes, activation, output_activation=nn.Identity, seed_weight_init=None):
+    if seed_weight_init is not None:
+        torch.random.manual_seed(seed_weight_init)
     layers = []
     for j in range(len(sizes)-1):
         act = activation if j < len(sizes)-2 else output_activation
@@ -65,9 +67,9 @@ class Actor(nn.Module):
 
 class MLPCategoricalActor(Actor):
     
-    def __init__(self, obs_dim, act_dim, hidden_sizes, activation):
+    def __init__(self, obs_dim, act_dim, hidden_sizes, activation, seed_weight_init=None):
         super().__init__()
-        self.logits_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
+        self.logits_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation, seed_weight_init=seed_weight_init)
 
     def _distribution(self, obs):
         logits = self.logits_net(obs)
@@ -79,11 +81,11 @@ class MLPCategoricalActor(Actor):
 
 class MLPGaussianActor(Actor):
 
-    def __init__(self, obs_dim, act_dim, hidden_sizes, activation):
+    def __init__(self, obs_dim, act_dim, hidden_sizes, activation, seed_weight_init=None):
         super().__init__()
         log_std = -0.5 * np.ones(act_dim, dtype=np.float32)
         self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
-        self.mu_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
+        self.mu_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation, seed_weight_init=seed_weight_init)
 
     def _distribution(self, obs):
         mu = self.mu_net(obs)
@@ -96,9 +98,9 @@ class MLPGaussianActor(Actor):
 
 class MLPCritic(nn.Module):
 
-    def __init__(self, obs_dim, hidden_sizes, activation):
+    def __init__(self, obs_dim, hidden_sizes, activation, seed_weight_init=None):
         super().__init__()
-        self.v_net = mlp([obs_dim] + list(hidden_sizes) + [1], activation)
+        self.v_net = mlp([obs_dim] + list(hidden_sizes) + [1], activation, seed_weight_init=seed_weight_init)
 
     def forward(self, obs):
         return torch.squeeze(self.v_net(obs), -1) # Critical to ensure v has right shape.
@@ -108,24 +110,22 @@ class MLPCritic(nn.Module):
 class MLPActorCritic(nn.Module):
 
 
-    def __init__(self, observation_space, action_space, 
+    def __init__(self, seed, observation_space, action_space,
                  hidden_sizes=(64,64), activation=nn.Tanh,
                  seed_weight_init=None):
         super().__init__()
 
         obs_dim = observation_space.shape[0]
-
-        if seed_weight_init is not None:
-            torch.manual_seed(seed_weight_init)
+        torch.random.manual_seed(seed)
 
         # policy builder depends on action space
         if isinstance(action_space, Box):
-            self.pi = MLPGaussianActor(obs_dim, action_space.shape[0], hidden_sizes, activation)
+            self.pi = MLPGaussianActor(obs_dim, action_space.shape[0], hidden_sizes, activation, seed_weight_init)
         elif isinstance(action_space, Discrete):
-            self.pi = MLPCategoricalActor(obs_dim, action_space.n, hidden_sizes, activation)
+            self.pi = MLPCategoricalActor(obs_dim, action_space.n, hidden_sizes, activation, seed_weight_init)
 
         # build value function
-        self.v  = MLPCritic(obs_dim, hidden_sizes, activation)
+        self.v  = MLPCritic(obs_dim, hidden_sizes, activation, seed_weight_init)
 
     def step(self, obs):
         with torch.no_grad():
