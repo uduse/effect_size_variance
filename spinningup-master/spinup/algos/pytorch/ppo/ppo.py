@@ -201,7 +201,6 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     logger.save_config(locals())
 
     # Random seed
-    # seed += 10000 * proc_id()
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -363,8 +362,8 @@ if __name__ == '__main__':
     parser.add_argument('--hid', type=int, default=64)
     parser.add_argument('--l', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--seed', '-s', type=int, default=0)
-    parser.add_argument('--seed_weight_init', '-swi', type=int, default=0)
+    parser.add_argument('--seed', '-s', type=int, default=0, required=True)
+    parser.add_argument('--seed_weight_init', '-swi', type=int, default=0, required=True)
     parser.add_argument('--cpu', type=int, default=4)
     parser.add_argument('--steps', type=int, default=4000)
     parser.add_argument('--epochs', type=int, default=50)
