@@ -13,6 +13,7 @@ def dqn(
     hidden_sizes=(64,64),
     seed=0,
     seed_weight_init=None,
+    seed_env=None,
     steps_per_epoch=4000, epochs=100,
     replay_size=1000000, gamma=0.99,
     q_lr=5e-4, batch_size=100,
@@ -33,7 +34,10 @@ def dqn(
 
     # Instantiate environment
     env = env_fn()
-    env.seed(seed)
+    if seed_env is not None:
+        env.seed(seed_env)
+    else:
+        env.seed(seed)
     obs_dim = env.observation_space.shape[0]
 
     if isinstance(env.action_space, Box):
@@ -121,7 +125,8 @@ if __name__ == "__main__":
     parser.add_argument('--l', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--seed', '-s', type=int, default=0, required=True)
-    parser.add_argument('--seed_weight_init', '-swi', type=int, default=0, required=True)
+    parser.add_argument('--seed_env', '-se', type=int, default=0)
+    parser.add_argument('--seed_weight_init', '-swi', type=int, default=0)
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--exp_name', type=str, default='dqn')
     args = parser.parse_args()
@@ -133,8 +138,8 @@ if __name__ == "__main__":
         lambda: gym.make(args.env),
         ac_kwargs=dict(),
         hidden_sizes=[args.hid] * args.l,
-        gamma=args.gamma, seed=args.seed,
-        seed_weight_init=args.seed_weight_init,
+        gamma=args.gamma,
+        seed=args.seed, seed_weight_init=args.seed_weight_init, seed_env=args.seed_env,
         epochs=args.epochs,
         logger_kwargs=logger_kwargs
     )

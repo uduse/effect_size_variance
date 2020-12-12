@@ -85,8 +85,8 @@ class PPOBuffer:
 
 
 
-def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
-        seed_weight_init=None,
+def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(),
+        seed=0, seed_weight_init=None, seed_env=None,
         steps_per_epoch=4000, epochs=50, gamma=0.99, clip_ratio=0.2, pi_lr=3e-4,
         vf_lr=1e-3, train_pi_iters=80, train_v_iters=80, lam=0.97, max_ep_len=1000,
         target_kl=0.01, logger_kwargs=dict(), save_freq=10):
@@ -206,7 +206,10 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
     # Instantiate environment
     env = env_fn()
-    env.seed(seed)
+    if seed_env is not None:
+        env.seed(seed_env)
+    else:
+        env.seed(seed)
     obs_dim = env.observation_space.shape
     act_dim = env.action_space.shape
 
@@ -363,7 +366,8 @@ if __name__ == '__main__':
     parser.add_argument('--l', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--seed', '-s', type=int, default=0, required=True)
-    parser.add_argument('--seed_weight_init', '-swi', type=int, default=0, required=True)
+    parser.add_argument('--seed_env', '-se', type=int, default=0)
+    parser.add_argument('--seed_weight_init', '-swi', type=int, default=0)
     parser.add_argument('--cpu', type=int, default=4)
     parser.add_argument('--steps', type=int, default=4000)
     parser.add_argument('--epochs', type=int, default=50)
@@ -377,5 +381,6 @@ if __name__ == '__main__':
 
     ppo(lambda : gym.make(args.env), actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), gamma=args.gamma,
-        seed=args.seed, seed_weight_init=args.seed_weight_init, steps_per_epoch=args.steps, epochs=args.epochs,
+        seed=args.seed, seed_weight_init=args.seed_weight_init, seed_env=args.seed_env,
+        steps_per_epoch=args.steps, epochs=args.epochs,
         logger_kwargs=logger_kwargs)
